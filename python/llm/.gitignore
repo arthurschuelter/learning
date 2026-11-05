@@ -1,0 +1,4 @@
+.DS_Store
+.venv/
+chroma_db/
+llama_python.egg-info

@@ -1,0 +1,5 @@
+# Arrumando o pip3
+sudo apt-get install python3-pip python3-dev
+
+# Arrumando o pygame
+sudo pip3 install pygame
