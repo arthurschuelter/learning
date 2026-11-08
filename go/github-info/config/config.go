@@ -1,31 +1,27 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Token string
+	Token    string
+	Username string
 }
 
-func LoadConfig() *Config {
-	if err := godotenv.Load(".env"); err != nil {
-		log.Println("[ERROR]: .env file not found")
-		panic(err)
+func LoadConfig() (*Config, error) {
+	if err := godotenv.Load(".env"); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("load .env: %w", err)
 	}
-
-	return &Config{
-		Token: getEnv("GITHUB_TOKEN"),
+	cfg := &Config{Token: os.Getenv("GITHUB_TOKEN"), Username: os.Getenv("GITHUB_USERNAME")}
+	if cfg.Token == "" {
+		return nil, fmt.Errorf("GITHUB_TOKEN is required")
 	}
-}
-
-func getEnv(key string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		log.Fatalf("Environment variable %s is required but not set", key)
+	if cfg.Username == "" {
+		return nil, fmt.Errorf("GITHUB_USERNAME is required")
 	}
-	return value
+	return cfg, nil
 }

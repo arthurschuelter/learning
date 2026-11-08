@@ -9,6 +9,8 @@ type Repo struct {
 	FullName     string `json:"full_name"`
 	LanguagesURL string `json:"languages_url"`
 	Stars        int    `json:"stargazers_count"`
+	Fork         bool   `json:"fork"`
+	Private      bool   `json:"private"`
 }
 
 type Ranking struct {
@@ -26,7 +28,7 @@ type User struct {
 }
 
 func (ranking *Ranking) PrintRanking(i int) {
-	fmt.Printf("  (%2d) %s: %.2f kB (%.2f%%)\n", i+1, ranking.Language, float32(ranking.Total)/1024, ranking.Ratio*100)
+	fmt.Printf("  (%2d) %s: %.2f KiB (%.2f%%)\n", i+1, ranking.Language, float32(ranking.Total)/1024, ranking.Ratio*100)
 }
 
 func (user *User) PrintData() {

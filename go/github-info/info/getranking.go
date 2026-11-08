@@ -9,24 +9,30 @@ import (
 	"github.com/arthurschuelter/go-git/utils"
 )
 
-func GetLanguageData(repos []models.Repo, client *http.Client, token string) []models.Ranking {
+func GetLanguageData(repos []models.Repo, client *http.Client, token string) ([]models.Ranking, error) {
 	fmt.Println("Language Ranking:")
 	LanguagesMap := make(map[string]int)
 	for _, r := range repos {
+		if r.Fork || r.Private {
+			continue
+		}
 		// fmt.Println(r.FullName)
 		link := r.LanguagesURL
 
-		req := utils.ConfigRequest(link, token)
-		body, err := utils.MakeRequestAndRead(client, req)
+		req, err := utils.ConfigRequest(link, token)
+		if err != nil {
+			return nil, err
+		}
+		body, _, err := utils.MakeRequestAndRead(client, req)
 
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("get languages for %s: %w", r.FullName, err)
 		}
 
 		languages, err := ReadLanguage(body)
 
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("get languages for %s: %w", r.FullName, err)
 		}
 
 		for key, value := range languages {
@@ -54,7 +60,7 @@ func GetLanguageData(repos []models.Repo, client *http.Client, token string) []m
 	}
 
 	ranking = utils.SortList(ranking)
-	return ranking
+	return ranking, nil
 }
 
 func ReadLanguage(data []byte) (map[string]int, error) {
