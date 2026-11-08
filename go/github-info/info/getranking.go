@@ -10,7 +10,6 @@ import (
 )
 
 func GetLanguageData(repos []models.Repo, client *http.Client, token string) ([]models.Ranking, error) {
-	fmt.Println("Language Ranking:")
 	LanguagesMap := make(map[string]int)
 	for _, r := range repos {
 		if r.Fork || r.Private {
