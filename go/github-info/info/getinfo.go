@@ -12,9 +12,23 @@ import (
 )
 
 func GetInfo(username string, config *config.Config) error {
-	cachePath := filepath.Join(".cache", "gogit.json")
+	return GetInfoWithOptions(username, config, false)
+}
+
+// GetInfoWithOptions generates a report, optionally skipping the KLOC calculation.
+func GetInfoWithOptions(username string, config *config.Config, skipKLOC bool) error {
+	return GetInfoWithRefresh(username, config, skipKLOC, false)
+}
+
+// GetInfoWithRefresh optionally skips KLOC and bypasses the cached report.
+func GetInfoWithRefresh(username string, config *config.Config, skipKLOC, forceRefresh bool) error {
+	cacheName := "gogit.json"
+	if skipKLOC {
+		cacheName = "gogit-no-kloc.json"
+	}
+	cachePath := filepath.Join(".cache", cacheName)
 	now := time.Now()
-	if report, ok := loadCache(cachePath, username, now); ok {
+	if report, ok := loadCache(cachePath, username, now); !forceRefresh && ok && (skipKLOC || report.Lines != nil) {
 		fmt.Printf("Cached report (fetched %s)\n", report.FetchedAt.Local().Format(time.RFC3339))
 		printReport(report)
 		return nil
@@ -34,9 +48,12 @@ func GetInfo(username string, config *config.Config) error {
 	if err != nil {
 		return err
 	}
-	kloc, err := GetKLOC(repos)
-	if err != nil {
-		return err
+	var kloc map[string]int64
+	if !skipKLOC {
+		kloc, err = GetKLOC(repos)
+		if err != nil {
+			return err
+		}
 	}
 
 	report := &reportCache{Version: cacheVersion, Username: username, FetchedAt: now.UTC(), User: user, Repos: repos, Ranking: ranking, Lines: kloc}

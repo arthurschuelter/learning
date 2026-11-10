@@ -11,8 +11,10 @@ import (
 	"github.com/arthurschuelter/go-git/models"
 )
 
-const cacheVersion = 1
-const cacheLifetime = 24 * time.Hour
+const (
+	cacheVersion  = 1
+	cacheLifetime = 24 * time.Hour
+)
 
 // reportCache contains only public report data; it never stores the API token.
 type reportCache struct {
@@ -34,7 +36,7 @@ func loadCache(path, username string, now time.Time) (*reportCache, bool) {
 	if json.Unmarshal(data, &report) != nil || report.Version != cacheVersion ||
 		!strings.EqualFold(report.Username, username) || report.FetchedAt.IsZero() ||
 		report.FetchedAt.After(now) || now.Sub(report.FetchedAt) >= cacheLifetime ||
-		report.Ranking == nil || report.Lines == nil {
+		report.Ranking == nil {
 		return nil, false
 	}
 	return &report, true
@@ -46,7 +48,7 @@ func saveCache(path string, report *reportCache) error {
 		return err
 	}
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
 	file, err := os.CreateTemp(dir, ".gogit-cache-*")

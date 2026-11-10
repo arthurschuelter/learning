@@ -2,6 +2,7 @@ BINARY_NAME=gogit
 # INSTALL_PATH=$(shell go env GOPATH)/bin
 
 .DEFAULT_GOAL: build
+ARGS= --skip-kloc --force-refresh
 
 build:
 	clear
@@ -9,5 +10,5 @@ build:
 .PHONY: build
 
 run: build
-	./bin/$(BINARY_NAME) 
+	./bin/$(BINARY_NAME) $(ARGS)
 .PHONY: run

@@ -93,7 +93,11 @@ func mergeLanguages(ranking []models.Ranking, lines map[string]int64) []language
 }
 
 func printLanguages(w io.Writer, ranking []models.Ranking, lines map[string]int64) {
-	fmt.Fprintln(w, "Programming languages (GitHub byte share; cloc code lines):")
+	if lines == nil {
+		fmt.Fprintln(w, "Programming languages (GitHub byte share; KLOC skipped):")
+	} else {
+		fmt.Fprintln(w, "Programming languages (GitHub byte share; cloc code lines):")
+	}
 	rows := mergeLanguages(ranking, lines)
 	if len(rows) == 0 {
 		fmt.Fprintln(w, "  No recognized programming languages")
@@ -103,6 +107,10 @@ func printLanguages(w io.Writer, ranking []models.Ranking, lines map[string]int6
 		bytes := "n/a"
 		if row.hasBytes {
 			bytes = fmt.Sprintf("%.2f KiB (%.2f%%)", float64(row.bytes)/1024, row.ratio*100)
+		}
+		if lines == nil {
+			fmt.Fprintf(w, "  %s: %s\n", row.name, bytes)
+			continue
 		}
 		kloc := "n/a"
 		if row.hasLines {

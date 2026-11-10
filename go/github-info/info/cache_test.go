@@ -1,6 +1,8 @@
 package info
 
 import (
+	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -66,5 +68,83 @@ func TestGetInfoUsesFreshCacheWithoutDependencies(t *testing.T) {
 	}
 	if err := GetInfo("example", &config.Config{Token: "invalid"}); err != nil {
 		t.Fatalf("fresh cache should avoid API and cloc: %v", err)
+	}
+}
+
+func TestGetInfoUsesCacheWithoutKLOC(t *testing.T) {
+	dir := t.TempDir()
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(oldDir); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Setenv("PATH", "")
+	report := &reportCache{Version: cacheVersion, Username: "example", FetchedAt: time.Now(), Ranking: []models.Ranking{}}
+	if err := saveCache(filepath.Join(".cache", "gogit-no-kloc.json"), report); err != nil {
+		t.Fatal(err)
+	}
+	if err := GetInfoWithOptions("example", &config.Config{Token: "invalid"}, true); err != nil {
+		t.Fatalf("fast cache should avoid API and cloc: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(".cache", "gogit.json")); !os.IsNotExist(err) {
+		t.Fatalf("fast report should not create a full report cache: %v", err)
+	}
+}
+
+type failingTransport struct{}
+
+func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("refresh attempted")
+}
+
+func TestForceRefreshBypassesCache(t *testing.T) {
+	dir := t.TempDir()
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(oldDir); err != nil {
+			t.Error(err)
+		}
+	})
+	oldTransport := http.DefaultTransport
+	http.DefaultTransport = failingTransport{}
+	t.Cleanup(func() { http.DefaultTransport = oldTransport })
+	for _, tc := range []struct {
+		name string
+		skip bool
+	}{{"gogit.json", false}, {"gogit-no-kloc.json", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(".cache", tc.name)
+			report := &reportCache{Version: cacheVersion, Username: "example", FetchedAt: time.Now(), Ranking: []models.Ranking{}, Lines: map[string]int64{}}
+			if err := saveCache(path, report); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := GetInfoWithRefresh("example", &config.Config{}, tc.skip, true); err == nil {
+				t.Fatal("forced refresh should attempt the API")
+			}
+			after, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(before) != string(after) {
+				t.Fatal("failed refresh replaced the cache")
+			}
+		})
 	}
 }
